@@ -1,32 +1,56 @@
-# Hledání nejkratší cesty v bludišti
+# Modelování procesu vedení tepla v čase
 
 ## Textový popis
+Tento projek se zabývá numerickou simulací procesu vedení tepla v pevných látkách. Konkrétně se jedná o modelování zjednodušené varianty 2D problému vedení tepla v čase.
 
-Tento projekt se zabývá řešením (hledáním nejkratší cesty) a také
-základním generováním bludišť. Základním vstupem bude bludiště
-$n\times n$, přičemž vstup do bludiště bude vždy levý horní roh a výstup
-bude vždy pravý dolní roh. Z jedné buňky do druhé se lze dostat pouze
-přes společnou hranu (nikoliv přes roh). Cílem projektu je implementovat
-algoritmy pro načítání, hledání nejkratší cesty a generování bludiště.
 
-Na začátku bude implementována funkce pro načítání bludiště z CSV
-souboru. Tato funkce bude umět načítat bludiště o libovolném rozměru
-$n\times n$ a uložit ho do paměti v podobě NumPy matice s True/False
-hodnotami (True = buňka je neprůchozí). Poté bude implementován
-algoritmus pro hledání nejkratší cesty. Poslední částí bude vytvoření
-generátoru bludiště za použití algoritmu pro hledání nejkratší cesty.
+Uvažujeme oblast tvaru obdélníku o stranách $a \times b$. 
+V počátečním čase $t=0$ má každý bod oblasti určitou teplotu. Úkolem je modelovat průběh vedení tepla v čase, tedy spočítat teplotu v oblasti v časových krocích $t=dt$, $t=2dt$, $\ldots$, $t=Ndt$. Teplotu budeme reprezentovat pomocí funkce
+$u:\mathbb{R}^{3}\rightarrow\mathbb{R}$,
+hodnota $u\left(x,y,t\right)$ udává teplotu v bodě o souřadnicích
+$\left(x,y\right)$ v čase $t$. 
 
-Výstup bude formou obrázku (černá = neprostupná část, bílá = průchozí,
-červená = nejkratší cesta).
+Numerická simulace bude založena na fyzikální simulaci v jednotlivých časových krocích. Oblast diskretizujeme (rouzdělíme) na
+shodné obdélníkové podoblasti o stranách $dx \times dy$.
+Teplotu v každé podoblasti budeme reprezentovat pomocí hodnoty teploty ve středu této podoblasti. V každém časovém kroku poté spořítáme rozdíly teplot mezi sousedními podoblastmi (sdílejícími hranu) a tyto rozdíly přepočítáme do změny teploty v každé podoblasti. 
 
-## Funcionality
+Změny teplot jsou zadány vztahem: 
 
-- Implementovat načítání bludiště z CSV souboru
-- Implementovat algoritmus pro hledání nejkratší cesty (mezi levým horním rohem a pravým dolním rohem) za použití knihovny NumPy,který bude pracovat v následujících dvou krocích:
-  - Sestavení incidenční matice
-  - Hledání nejkratší cesty např. pomocí Dijkstrova algoritmu (jsou i jiné možnosti jako hledání do šířky, výběr je na vás)
-- Zapsat bludiště a nalezenou cestu do černobílého obrázku, kde cesta bude vyznačena červeně
-- Vytvořit funkci pro generování bludiště tak, aby mělo řešení (tj. aby existovala cesta mezi levým horním a pravým dolním rohem)
-  - funkce začne s nějakou šablonou (předdefinované v kódu) a poté bude zaplňovat bludiště v náhodných místech a kontrolovat, zda je stále průchozí
-  - šablon bude více (např. empty = volné bludiště, slalom = bariéry
-    aby cesta musela minimálně mít tvar S, \...) - budou s obrázky ukázané v Readme nebo examples.ipynb
+$
+u\left(x,y,t+dt\right)\approx u\left(x,y,t\right)+\frac{2}{\rho\left(x,y\right)c\left(x,y\right)}dt\left(\frac{u\left(x-dx,y,t\right)-u\left(x,y,t\right)}{\left(\frac{1}{\lambda\left(x,y\right)}+\frac{1}{\lambda\left(x-dx,y\right)}\right)dx^{2}}+
+\frac{u\left(x,y-dy,t\right)-u\left(x,y,t\right)}{\left(\frac{1}{\lambda\left(x,y\right)}+\frac{1}{\lambda\left(x,y-dy\right)}\right)dy^{2}}+\frac{u\left(x+dx,y,t\right)-u\left(x,y,t\right)}{\left(\frac{1}{\lambda\left(x,y\right)}+\frac{1}{\lambda\left(x+dx,y\right)}\right)dx^{2}}+\frac{u\left(x,y+dy,t\right)-u\left(x,y,t\right)}{\left(\frac{1}{\lambda\left(x,y\right)}+\frac{1}{\lambda\left(x,y+dy\right)}\right)dy^{2}}\right),
+$
+
+kde $\lambda$ je součinitel tepelné vodivosti, $\rho$ je hustota a $c$ je měrná tepelná kapacita. Parametry $\lambda$, $\rho$ a $c$ budou zadány na vstupu jako matice o stejných rozměrech jako je diskretizace oblasti. $\rho$ a $c$ se vyskytují vždy pohromadě, proto budou na vstupu dohromady. Dalším vstupem bude také počáteční teplota v každé podoblasti.
+
+Okrajové podmínky budou uvažováný jak tzv. nulové Neumannovy podmínky, tedy nepředpokládá se únik tepla mimo sledovanou oblast. Toto je automaticky splněno v našem případě, protože v každém časovém kroku se teplota v každé podoblasti přepočítává pouze z hodnot teploty v sousedních podoblastech.
+
+## Funcionalita
+- načtení vtupních dat ze souborů
+- implementace jednoho kroku numerické simulace pomocí cyklu
+- implementace kroku numerické simulace jako násobení maticí = sestavení této matice ve sparse formátu
+- simulace vedení tepla v čase do zadaného časového horizontu
+    - porovnání časové náročnosti obou implementací
+- vykreslení teploty v libovolném čase
+- vytvoření animace vedení tepla v čase a uložení do souboru
+
+# Struktura projektu:
+- složka s řešením: `simulation_cykly.py` and `simulation_matrix.py`
+
+- složka s testovacími daty: `data`
+
+- Jupyter notebook obsahující demonstraci funkcionalit/examples: `exaple_cyhly.ipynb` and `example_spirala.ipynb`
+
+- Readme file obsahující popis projektu
+
+- Vykreslování řešení a jeho zapisování do souboru:
+`teplo_animace_cihly.py` - animace pro cihlovou oblast
+
+`teplo_animace_spirala.py` - animace pro spirálu
+
+## Dokumentace
+
+- všechny funkce obsahují `docstringy` a `type hinting`
+- styl názvů funkcí: `snake_case` (např. `build_A_matrix`, `simulation_step`)
+- každá funkce dělá právě jednu věc (žádné kopírování kódu)
+- žádné „natvrdo“ zadané konstanty — vše se načítá z parametrů
